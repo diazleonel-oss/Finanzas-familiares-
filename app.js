@@ -83,11 +83,38 @@ $("owner").value="";
 $("category").innerHTML=categories.map(c=>`<option>${esc(c)}</option>`).join("");
 monthOptions();$("monthSelect").onchange=render;
 $("movementForm").onsubmit=async e=>{
- e.preventDefault();if(!householdId)return;
- const type=document.querySelector('input[name="type"]:checked').value;
- const amount=Number($("amount").value);if(!(amount>0))return toast("Ingresá un importe válido.");
- await addDoc(collection(db,"households",householdId,"movements"),{type,description:$("description").value.trim(),amount,date:$("date").value,category:$("category").value,scope:$("scope").value,createdBy:user.uid,createdByName:user.displayName||user.email,createdAt:serverTimestamp()});
- $("movementForm").reset();$("date").value=new Date().toISOString().slice(0,10);$("owner").value=user.displayName||user.email;await loadData();toast("Movimiento guardado y compartido.");
+ e.preventDefault();
+ const submitBtn=$("movementForm").querySelector('button[type="submit"]');
+ if(!user || !householdId){toast("La sesión o el hogar todavía no están listos. Cerrá sesión y volvé a ingresar.");return;}
+ const type=document.querySelector('input[name="type"]:checked')?.value;
+ const description=$("description").value.trim();
+ const amount=Number($("amount").value);
+ const date=$("date").value;
+ if(!description){toast("Escribí una descripción.");return;}
+ if(!(amount>0) || !Number.isFinite(amount)){toast("Ingresá un importe válido mayor que cero.");return;}
+ if(!date){toast("Seleccioná la fecha del movimiento.");return;}
+ submitBtn.disabled=true; const originalText=submitBtn.textContent; submitBtn.textContent="Guardando…";
+ try {
+  await addDoc(collection(db,"households",householdId,"movements"),{
+   type, description, amount, date, category:$("category").value,
+   scope:$("scope").value, createdBy:user.uid,
+   createdByName:user.displayName||user.email, createdAt:serverTimestamp()
+  });
+  $("movementForm").reset();
+  $("date").value=new Date().toISOString().slice(0,10);
+  $("owner").value=user.displayName||user.email;
+  await loadData();
+  toast("Movimiento guardado y compartido.");
+ } catch(err) {
+  console.error("Error al guardar movimiento:",err);
+  let msg=err?.code||err?.message||"error desconocido";
+  if(err?.code==="permission-denied") msg="Firebase rechazó el permiso. Revisá las reglas de Firestore.";
+  else if(err?.code==="unavailable") msg="No hay conexión con Firebase. Revisá internet e intentá de nuevo.";
+  else if(err?.code==="unauthenticated") msg="La sesión venció. Cerrá sesión y volvé a ingresar.";
+  toast("No se pudo guardar: "+msg);
+ } finally {
+  submitBtn.disabled=false; submitBtn.textContent=originalText;
+ }
 };
 $("memberForm").onsubmit=async e=>{
  e.preventDefault();if(user.uid!==household.ownerUid)return toast("Solo el administrador puede agregar integrantes.");
