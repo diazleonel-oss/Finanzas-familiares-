@@ -14,7 +14,7 @@ const firebaseConfig = {
 const app=initializeApp(firebaseConfig), auth=getAuth(app), db=getFirestore(app), provider=new GoogleAuthProvider();
 const $=id=>document.getElementById(id);
 const categories=["Alquiler","Alimentos","Servicios","Transporte","Combustible","Auto/Seguro/Patente","Salud","Educación","Impuestos","Tarjetas","Préstamos","Entretenimiento","Compras","Hogar","Ahorro","Inversión","Otros"];
-let user=null, householdId=null, household=null, allMovements=[];
+let user=null, householdId=null, household=null, allMovements=[], householdReady=false, authInitPromise=Promise.resolve();
 const money=n=>new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS",maximumFractionDigits:0}).format(n||0);
 const today=new Date(), monthKey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -85,7 +85,11 @@ monthOptions();$("monthSelect").onchange=render;
 $("movementForm").onsubmit=async e=>{
  e.preventDefault();
  const submitBtn=$("movementForm").querySelector('button[type="submit"]');
- if(!user || !householdId){toast("La sesión o el hogar todavía no están listos. Cerrá sesión y volvé a ingresar.");return;}
+ if(!householdReady){
+  toast("La aplicación todavía está preparando el hogar. Esperá unos segundos e intentá nuevamente.");
+  try { await authInitPromise; } catch (_) { return; }
+ }
+ if(!user || !householdId || !householdReady){toast("No se pudo inicializar el hogar. Cerrá sesión y volvé a ingresar; si continúa, avisame.");return;}
  const type=document.querySelector('input[name="type"]:checked')?.value;
  const description=$("description").value.trim();
  const amount=Number($("amount").value);
@@ -122,13 +126,32 @@ $("memberForm").onsubmit=async e=>{
  const members=[...new Set([...(household.memberEmails||[]),email])];
  await setDoc(doc(db,"households",householdId),{...household,memberEmails:members},{merge:true});household.memberEmails=members;await renderMembers();$("memberEmail").value="";toast("Gmail agregado. La otra persona ya puede iniciar sesión.");
 };
-onAuthStateChanged(auth,async u=>{
+onAuthStateChanged(auth,u=>{
  user=u;
- if(!u){$("loginView").classList.remove("hidden");$("appView").classList.add("hidden");$("logout").classList.add("hidden");return}
- try{
-  $("loginView").classList.add("hidden");$("appView").classList.remove("hidden");$("logout").classList.remove("hidden");$("owner").value=u.displayName||u.email;
-  await loadHousehold();await loadData();
- }catch(err){console.error(err);toast("No se pudo cargar el hogar: "+err.message)}
+ householdReady=false;
+ householdId=null;
+ household=null;
+ if(!u){
+  $("loginView").classList.remove("hidden");
+  $("appView").classList.add("hidden");
+  $("logout").classList.add("hidden");
+  return;
+ }
+ $("loginView").classList.add("hidden");
+ $("appView").classList.add("hidden");
+ $("logout").classList.remove("hidden");
+ $("owner").value=u.displayName||u.email;
+ authInitPromise=(async()=>{
+  try{
+   await loadHousehold();
+   await loadData();
+   householdReady=true;
+   $("appView").classList.remove("hidden");
+  }catch(err){
+   console.error("Error inicializando el hogar:",err);
+   toast("No se pudo cargar el hogar: "+(err.code||err.message));
+  }
+ })();
 });
 
 if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js"));
