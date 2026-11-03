@@ -15,23 +15,30 @@ const app=initializeApp(firebaseConfig), auth=getAuth(app), db=getFirestore(app)
 const $=id=>document.getElementById(id);
 const categories=["Alquiler","Alimentos","Servicios","Transporte","Combustible","Auto/Seguro/Patente","Salud","Educación","Impuestos","Tarjetas","Préstamos","Entretenimiento","Compras","Hogar","Ahorro","Inversión","Otros"];
 let user=null, householdId=null, household=null, allMovements=[], householdReady=false, authInitPromise=Promise.resolve();
+function getUserEmail(){
+  const email=user?.email || user?.providerData?.find(p=>p.email)?.email || null;
+  return typeof email === "string" && email.trim() ? email.trim().toLowerCase() : null;
+}
 const money=n=>new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS",maximumFractionDigits:0}).format(n||0);
 const today=new Date(), monthKey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function toast(s){$("toast").textContent=s;$("toast").classList.remove("hidden");setTimeout(()=>$("toast").classList.add("hidden"),3000)}
 function monthOptions(){const sel=$("monthSelect");for(let i=0;i<15;i++){const d=new Date(today.getFullYear(),today.getMonth()-i,1),v=monthKey(d),o=document.createElement("option");o.value=v;o.textContent=d.toLocaleDateString("es-AR",{month:"long",year:"numeric"});sel.append(o)}sel.value=monthKey(today)}
 async function loadHousehold(){
+  if(!user?.uid) throw Error("No hay una sesión de usuario válida.");
+  const email=getUserEmail();
+  if(!email) throw Error("Google no devolvió un correo para esta sesión. Cerrá sesión e ingresá eligiendo tu cuenta Gmail.");
   const mapRef=doc(db,"userHouseholds",user.uid), mapSnap=await getDoc(mapRef);
   if(mapSnap.exists()){householdId=mapSnap.data().householdId;const h=await getDoc(doc(db,"households",householdId));if(!h.exists())throw Error("No se encontró el hogar.");household=h.data();return}
   // Un usuario nuevo puede crear un hogar propio. Para unirse al hogar existente,
   // el administrador debe agregar primero su Gmail desde la sección Acceso familiar.
-  const q=query(collection(db,"households"),where("memberEmails","array-contains",user.email.toLowerCase()));
+  const q=query(collection(db,"households"),where("memberEmails","array-contains",email));
   const found=await getDocs(q);
-  if(!found.empty){const hdoc=found.docs[0];householdId=hdoc.id;household=hdoc.data();await setDoc(mapRef,{householdId,email:user.email.toLowerCase()});return}
+  if(!found.empty){const hdoc=found.docs[0];householdId=hdoc.id;household=hdoc.data();await setDoc(mapRef,{householdId,email:email});return}
   householdId=doc(collection(db,"households")).id;
-  household={ownerUid:user.uid,ownerEmail:user.email.toLowerCase(),memberEmails:[user.email.toLowerCase()],createdAt:serverTimestamp()};
+  household={ownerUid:user.uid,ownerEmail:email,memberEmails:[email],createdAt:serverTimestamp()};
   await setDoc(doc(db,"households",householdId),household);
-  await setDoc(mapRef,{householdId,email:user.email.toLowerCase()});
+  await setDoc(mapRef,{householdId,email:email});
 }
 async function loadData(){
   const q=query(collection(db,"households",householdId,"movements"),orderBy("date","desc"));
@@ -102,11 +109,11 @@ $("movementForm").onsubmit=async e=>{
   await addDoc(collection(db,"households",householdId,"movements"),{
    type, description, amount, date, category:$("category").value,
    scope:$("scope").value, createdBy:user.uid,
-   createdByName:user.displayName||user.email, createdAt:serverTimestamp()
+   createdByName:user.displayName||getUserEmail()||"Usuario", createdAt:serverTimestamp()
   });
   $("movementForm").reset();
   $("date").value=new Date().toISOString().slice(0,10);
-  $("owner").value=user.displayName||user.email;
+  $("owner").value=user.displayName||getUserEmail()||"Usuario";
   await loadData();
   toast("Movimiento guardado y compartido.");
  } catch(err) {
