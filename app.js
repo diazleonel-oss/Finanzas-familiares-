@@ -1,6 +1,6 @@
 // 1) Reemplazá los valores de firebaseConfig por los de tu proyecto Firebase.
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, collection, doc, getDoc, setDoc, addDoc, getDocs, query, where, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -63,7 +63,20 @@ async function renderMembers(){
   const emails=household?.memberEmails||[];
   $("members").innerHTML=emails.map(e=>`<span class="chip">${esc(e)}${e===household.ownerEmail?" · administrador":""}</span>`).join("");
 }
-$("login").onclick=()=>signInWithRedirect(auth,provider);
+$("login").onclick=async()=>{
+  const btn=$("login");
+  btn.disabled=true;
+  btn.textContent="Conectando con Google…";
+  try {
+    await signInWithPopup(auth,provider);
+  } catch(e) {
+    console.error("Error de inicio de sesión:",e);
+    toast("No se pudo iniciar sesión: "+(e.code||e.message));
+  } finally {
+    btn.disabled=false;
+    btn.textContent="Continuar con Google";
+  }
+};
 $("logout").onclick=()=>signOut(auth);
 $("date").value=new Date().toISOString().slice(0,10);
 $("owner").value="";
@@ -90,5 +103,5 @@ onAuthStateChanged(auth,async u=>{
   await loadHousehold();await loadData();
  }catch(err){console.error(err);toast("No se pudo cargar el hogar: "+err.message)}
 });
-getRedirectResult(auth).catch(e=>{console.error(e);toast("No se pudo iniciar sesión con Google.")});
+
 if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js"));
