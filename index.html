@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#17365d"><meta name="description" content="Gestión financiera familiar">
+  <link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg">
+  <title>Finanzas Familiares</title><link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top"><div><span class="eyebrow">HOGAR</span><h1>Finanzas familiares</h1></div><button id="logout" class="ghost hidden">Salir</button></header>
+<main>
+  <section id="loginView" class="panel login">
+    <div class="brand">₳</div><h2>Tu economía, en un solo lugar</h2>
+    <p>Ingresen ambos con Google para compartir ingresos, gastos, tarjetas y objetivos.</p>
+    <button id="login" class="primary">Continuar con Google</button>
+    <small>Los movimientos de este hogar son visibles para todos sus integrantes autorizados.</small>
+  </section>
+  <section id="appView" class="hidden">
+    <div class="welcome"><div><span class="eyebrow">RESUMEN FAMILIAR</span><h2 id="monthTitle">Este mes</h2></div><select id="monthSelect" aria-label="Mes"></select></div>
+    <div class="metrics">
+      <article class="metric"><span>Ingresos</span><strong id="income">$0</strong></article>
+      <article class="metric"><span>Gastos</span><strong id="expense">$0</strong></article>
+      <article class="metric"><span>Disponible</span><strong id="balance">$0</strong></article>
+    </div>
+    <section class="panel alerts"><div class="section-head"><h3>Alertas y oportunidades</h3><span class="spark">✦</span></div><div id="alerts"><p class="muted">Cargando análisis…</p></div></section>
+    <section class="panel"><div class="section-head"><h3>Gastos por categoría</h3><span class="muted">Mes seleccionado</span></div><div id="categories" class="bars"></div></section>
+    <section class="panel">
+      <div class="section-head"><h3>Nuevo movimiento</h3><span class="muted">Se comparte con el hogar</span></div>
+      <form id="movementForm">
+        <div class="toggle"><label><input type="radio" name="type" value="Gasto" checked> Gasto</label><label><input type="radio" name="type" value="Ingreso"> Ingreso</label></div>
+        <label>Descripción<input id="description" required maxlength="80" placeholder="Ej. supermercado"></label>
+        <div class="two"><label>Importe (ARS)<input id="amount" type="number" min="1" step="0.01" required placeholder="25000"></label><label>Fecha<input id="date" type="date" required></label></div>
+        <div class="two"><label>Categoría<select id="category"></select></label><label>Quién lo cargó<input id="owner" disabled></label></div>
+        <label>Tipo de gasto<select id="scope"><option value="Familiar">Familiar</option><option value="Personal">Personal</option></select></label>
+        <button class="primary" type="submit">Guardar movimiento</button>
+      </form>
+    </section>
+    <section class="panel"><div class="section-head"><h3>Movimientos recientes</h3><span id="count" class="muted"></span></div><div id="movementList"></div></section>
+    <section class="panel family"><div class="section-head"><h3>Acceso familiar</h3><span class="muted">Mismos datos para ambos</span></div>
+      <p class="muted">Agregá el Gmail de tu pareja. Luego deberá iniciar sesión con esa misma cuenta de Google.</p>
+      <form id="memberForm" class="inline"><input id="memberEmail" type="email" placeholder="correo@gmail.com" required><button class="secondary">Agregar</button></form>
+      <div id="members" class="members"></div>
+      <p class="tiny">El administrador del hogar puede agregar integrantes. Todos los miembros pueden ver y registrar todos los movimientos.</p>
+    </section>
+  </section>
+</main>
+<footer>Finanzas Familiares · Datos sincronizados en la nube</footer>
+<div id="toast" role="status" class="toast hidden"></div>
+<script type="module" src="app.js"></script>
+</body></html>

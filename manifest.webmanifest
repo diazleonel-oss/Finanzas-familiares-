@@ -1,0 +1,16 @@
+{
+  "name": "Finanzas Familiares",
+  "short_name": "Finanzas",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f3f6fa",
+  "theme_color": "#17365d",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
